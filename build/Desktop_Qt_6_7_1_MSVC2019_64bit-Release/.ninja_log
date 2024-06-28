@@ -1,0 +1,10 @@
+# ninja log v5
+1	374	7412894942835922	Translate_autogen/timestamp	bcfe78e5efcf5c14
+1	374	7412894942835922	Translate_autogen/mocs_compilation.cpp	bcfe78e5efcf5c14
+1	374	7412894942835922	D:/QtFile/Translate/build/Desktop_Qt_6_7_1_MSVC2019_64bit-Release/Translate_autogen/timestamp	bcfe78e5efcf5c14
+1	374	7412894942835922	D:/QtFile/Translate/build/Desktop_Qt_6_7_1_MSVC2019_64bit-Release/Translate_autogen/mocs_compilation.cpp	bcfe78e5efcf5c14
+379	2829	7412894967864566	CMakeFiles/Translate.dir/httpmanager.cpp.obj	1d81834fc15a0c2a
+381	3642	7412894975912768	CMakeFiles/Translate.dir/main.cpp.obj	f690902aeecfe8ff
+382	3858	7412894978058657	CMakeFiles/Translate.dir/Translate_autogen/mocs_compilation.cpp.obj	c906013e664ced36
+378	3926	7412894978798707	CMakeFiles/Translate.dir/widget.cpp.obj	1c2f5a1de965cad5
+3926	4084	7412894980318537	Translate.exe	e59bd4796919c863
