@@ -25,8 +25,8 @@ public:
     QGridLayout *gridLayout;
     QVBoxLayout *verticalLayout_2;
     QVBoxLayout *verticalLayout;
-    QTextEdit *txt_target;
     QTextEdit *txt_source;
+    QTextEdit *txt_target;
     QPushButton *btn_translate;
 
     void setupUi(QWidget *Widget)
@@ -40,20 +40,21 @@ public:
         verticalLayout_2->setObjectName("verticalLayout_2");
         verticalLayout = new QVBoxLayout();
         verticalLayout->setObjectName("verticalLayout");
-        txt_target = new QTextEdit(Widget);
-        txt_target->setObjectName("txt_target");
+        txt_source = new QTextEdit(Widget);
+        txt_source->setObjectName("txt_source");
+        txt_source->setMaximumSize(QSize(16777215, 100));
         QFont font;
         font.setPointSize(12);
+        txt_source->setFont(font);
+
+        verticalLayout->addWidget(txt_source);
+
+        txt_target = new QTextEdit(Widget);
+        txt_target->setObjectName("txt_target");
         txt_target->setFont(font);
         txt_target->setReadOnly(true);
 
         verticalLayout->addWidget(txt_target);
-
-        txt_source = new QTextEdit(Widget);
-        txt_source->setObjectName("txt_source");
-        txt_source->setFont(font);
-
-        verticalLayout->addWidget(txt_source);
 
 
         verticalLayout_2->addLayout(verticalLayout);

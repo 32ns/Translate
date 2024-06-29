@@ -19,6 +19,21 @@
      <item>
       <layout class="QVBoxLayout" name="verticalLayout">
        <item>
+        <widget class="QTextEdit" name="txt_source">
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>100</height>
+          </size>
+         </property>
+         <property name="font">
+          <font>
+           <pointsize>12</pointsize>
+          </font>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QTextEdit" name="txt_target">
          <property name="font">
           <font>
@@ -27,15 +42,6 @@
          </property>
          <property name="readOnly">
           <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QTextEdit" name="txt_source">
-         <property name="font">
-          <font>
-           <pointsize>12</pointsize>
-          </font>
          </property>
         </widget>
        </item>

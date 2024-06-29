@@ -29,9 +29,6 @@ public:
     void uninstallHook();
     void keyDownHandle();
     void Translation(QJsonArray textList, QString to_language);
-    /***************************************************************************************************************
-        翻译完成
-    ***************************************************************************************************************/
     void finished(QByteArray data);
     QString getClipboardContent();
 

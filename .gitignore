@@ -1,0 +1,19 @@
+# Binaries for programs and plugins
+main
+untitled19
+*.exe
+*.exe~
+*.so
+*.dylib
+*.dll
+
+# Ignore binary output folders
+bin/
+build/
+
+# Ignore common editor/system specific metadata
+.DS_Store
+.idea/
+.vscode/
+*.iml
+*.user

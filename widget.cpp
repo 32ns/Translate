@@ -128,6 +128,7 @@ void Widget::keyDownHandle()
         return;
     }
     Translation(QJsonArray{data},"zh");
+    ui->txt_source->setTextColor(QColor(97, 97, 97));
     ui->txt_source->clear();
     ui->txt_source->append(data);
 }
@@ -166,6 +167,7 @@ void Widget::finished(QByteArray data)
     for(int i=0;i<jsonArray.size();i++){
         result.append(jsonArray[i].toString());
     }
+    ui->txt_source->setTextColor(QColor(46, 47, 48));
     ui->txt_target->clear();
     ui->txt_target->append(result);
 
