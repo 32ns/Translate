@@ -1,5 +1,6 @@
-﻿#include "widget.h"
+#include "widget.h"
 #include <QApplication>
+#include <QNetworkProxyFactory>
 #include <QSharedMemory>
 
 int main(int argc, char *argv[])
@@ -10,7 +11,7 @@ int main(int argc, char *argv[])
         qDebug() << "另一个实例已经在运行";
         return 0;
     }
-
+    QNetworkProxyFactory::setUseSystemConfiguration(false);
     QApplication a(argc, argv);
     Widget w;
     w.setWindowFlags(Qt::WindowTitleHint|Qt::WindowStaysOnTopHint);    //隐藏标题栏（无边框）

@@ -1,206 +1,277 @@
-﻿#include "widget.h"
+#include "widget.h"
 #include "./ui_widget.h"
 #include <QApplication>
 #include <QJsonObject>
-#include <qjsondocument.h>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QDebug>
+#include <QTimer>
 
-
-DWORD lastCtrlCPressTime = 0;
-bool ctrlPress = false;
-HHOOK keyboardHook = NULL;
-Widget* thisWindow;
-
+// 初始化静态成员
+Widget* Widget::s_instance = nullptr;
 
 bool Widget::eventFilter(QObject *watched, QEvent *event)
 {
-    if( watched == this ){
+    if(watched == this){
         switch (event->type()) {
-        case QEvent::WindowActivate:{
-
-        }break;
-        case QEvent::WindowDeactivate:{
+        case QEvent::WindowDeactivate:
             this->hide();
             return true;
-        }break;
         default:
             break;
         }
     }
-
     return false;
 }
 
 Widget::Widget(QWidget *parent)
-    : QWidget(parent), ui(new Ui::Widget)
+    : QWidget(parent)
+    , ui(new Ui::Widget)
+    , clipboard(QApplication::clipboard())
+    , m_lastCtrlCPressTime(0)
+    , m_ctrlPress(false)
+    , m_keyboardHook(nullptr)
 {
+    if (!clipboard) {
+        qWarning() << "Failed to get clipboard instance";
+    }
+    
     ui->setupUi(this);    
-    thisWindow = this;    
-    QWidget::installEventFilter(this);//为这个窗口安装过滤器
-    connect(&http,&HttpManager::sig_finished,this,&Widget::finished);
-    installHook();
+    s_instance = this;    
+    installEventFilter(this);
+    connect(&http, &HttpManager::sig_finished, this, &Widget::finished);
+    
+    // 设置窗口属性
+    setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::Tool);
+    setAttribute(Qt::WA_ShowWithoutActivating);
+    setAttribute(Qt::WA_DeleteOnClose);
+    
+    // 确保在构造函数最后安装钩子
+    QTimer::singleShot(0, this, [this]() {
+        installHook();
+        qDebug() << "Hook installed in timer";
+    });
+    
+    qDebug() << "Widget constructed";
 }
 
 Widget::~Widget()
 {
-    delete ui;
+    qDebug() << "Widget destructing";
+    s_instance = nullptr;
     uninstallHook();
+    delete ui;
 }
 
-/***************************************************************************************************************
-    键盘钩子过程
-***************************************************************************************************************/
-LRESULT KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK Widget::KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 {
-    if (nCode >= 0)
+    if (nCode >= 0 && s_instance)
     {
-        // wParam 是键盘事件类型
-        if (wParam == WM_KEYDOWN)
+        KBDLLHOOKSTRUCT* pKeyInfo = (KBDLLHOOKSTRUCT*)lParam;
+        
+        switch (wParam)
         {
-            KBDLLHOOKSTRUCT* pKeyInfo = (KBDLLHOOKSTRUCT*)lParam;
-
-            // 检测Ctrl按下
-            if (pKeyInfo->vkCode == 162)
+        case WM_KEYDOWN:
+            qDebug() << "Key Down:" << pKeyInfo->vkCode << "Ctrl state:" << s_instance->m_ctrlPress;
+            
+            // 检测 Ctrl 键
+            if (pKeyInfo->vkCode == VK_LCONTROL || pKeyInfo->vkCode == VK_RCONTROL)
             {
-                ctrlPress = true;
+                s_instance->m_ctrlPress = true;
+                qDebug() << "Ctrl pressed, state:" << s_instance->m_ctrlPress;
             }
+            // 检测 C 键
             else if (pKeyInfo->vkCode == 'C')
             {
-                DWORD currentTime = GetTickCount();
-                // 检查两次按下Ctrl+C之间的时间间隔
-                if (ctrlPress && currentTime - lastCtrlCPressTime <= 500)
+                if (s_instance->m_ctrlPress)
                 {
-                    thisWindow->keyDownHandle();
+                    DWORD currentTime = GetTickCount();
+                    DWORD timeDiff = currentTime - s_instance->m_lastCtrlCPressTime;
+                    qDebug() << "Ctrl+C pressed, time diff:" << timeDiff;
+                    
+                    if (timeDiff <= 500)
+                    {
+                        qDebug() << "Double Ctrl+C detected, posting message";
+                        QMetaObject::invokeMethod(s_instance, "keyDownHandle", Qt::QueuedConnection);
+                    }
+                    s_instance->m_lastCtrlCPressTime = currentTime;
                 }
-                // 更新上次按下Ctrl+C的时间和计数
-                lastCtrlCPressTime = currentTime;
             }
-        }
-        else if (wParam == WM_KEYUP)
-        {
-            // 当键释放时
-            KBDLLHOOKSTRUCT* pKeyInfo = (KBDLLHOOKSTRUCT*)lParam;
-            if (pKeyInfo->vkCode == 162)
+            break;
+            
+        case WM_KEYUP:
+            // 检测 Ctrl 键释放
+            if (pKeyInfo->vkCode == VK_LCONTROL || pKeyInfo->vkCode == VK_RCONTROL)
             {
-                ctrlPress = false;
+                s_instance->m_ctrlPress = false;
+                qDebug() << "Ctrl released, state:" << s_instance->m_ctrlPress;
             }
+            break;
         }
     }
-    // 调用下一个钩子过程
     return CallNextHookEx(NULL, nCode, wParam, lParam);
 }
 
-
-/***************************************************************************************************************
-    安装钩子
-***************************************************************************************************************/
 void Widget::installHook()
 {
-    // 安装键盘钩子
-    keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardProc, NULL, 0);
-    if (keyboardHook == NULL)
+    qDebug() << "Installing hook...";
+    m_keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardProc, GetModuleHandle(NULL), 0);
+    if (m_keyboardHook == NULL)
     {
-        qDebug() << "Failed to install keyboard hook";
+        DWORD error = GetLastError();
+        qDebug() << "Failed to install keyboard hook. Error:" << error;
+    }
+    else
+    {
+        qDebug() << "Hook installed successfully";
     }
 }
 
-
-/***************************************************************************************************************
-    卸载钩子
-***************************************************************************************************************/
 void Widget::uninstallHook()
 {
-    // 卸载键盘钩子
-    if (keyboardHook != NULL)
+    qDebug() << "Uninstalling hook...";
+    if (m_keyboardHook != NULL)
     {
-        UnhookWindowsHookEx(keyboardHook);
-        keyboardHook = NULL;
+        if (UnhookWindowsHookEx(m_keyboardHook))
+        {
+            qDebug() << "Hook uninstalled successfully";
+        }
+        else
+        {
+            qDebug() << "Failed to uninstall hook. Error:" << GetLastError();
+        }
+        m_keyboardHook = NULL;
     }
 }
 
-
-/***************************************************************************************************************
-    按键事件处理
-***************************************************************************************************************/
 void Widget::keyDownHandle()
 {
+    qDebug() << "keyDownHandle called";
     QString data = getClipboardContent();
     if(data.isEmpty()){
+        qDebug() << "Clipboard is empty";
         return;
     }
-    Translation(QJsonArray{data},"zh");
+    
+    qDebug() << "Clipboard content:" << data;
+    data = data.trimmed();
+    if (data.length() > 5000) {
+        qWarning() << "Text too long, truncating to 5000 characters";
+        data = data.left(5000);
+    }
+    
+    Translation(QJsonArray{data}, "zh");
     ui->txt_source->setTextColor(QColor(97, 97, 97));
     ui->txt_source->clear();
     ui->txt_source->append(data);
+    
+    showAndActivateWindow();
 }
 
+void Widget::showAndActivateWindow()
+{
+    // 显示窗口
+    show();
+    raise();
+    activateWindow();
+    
+    // 使用定时器延迟激活窗口
+    QTimer::singleShot(50, this, [this]() {
+#ifdef Q_OS_WIN32
+        if (HWND hwnd = (HWND)this->winId()) {
+            if (HWND hForgroundWnd = GetForegroundWindow()) {
+                DWORD dwForeID = ::GetWindowThreadProcessId(hForgroundWnd, NULL);
+                DWORD dwCurID = ::GetCurrentThreadId();
+                
+                if (::AttachThreadInput(dwCurID, dwForeID, TRUE)) {
+                    ::SetForegroundWindow(hwnd);
+                    ::SetActiveWindow(hwnd);
+                    ::AttachThreadInput(dwCurID, dwForeID, FALSE);
+                }
+            }
+        }
+#endif
+        qDebug() << "Window activated";
+    });
+}
 
-/***************************************************************************************************************
-    翻译函数
-***************************************************************************************************************/
+bool Widget::isChineseText(const QString& text) {
+    for (const QChar& ch : text) {
+        if (ch.unicode() >= 0x4E00 && ch.unicode() <= 0x9FFF) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void Widget::Translation(QJsonArray textList, QString to_language)
 {
+    if (textList.isEmpty()) {
+        qWarning() << "Empty text list for translation";
+        return;
+    }
+
+    // 自动检测源文本语言并设置目标语言
+    QString sourceText = textList[0].toString();
+    QString targetLang = isChineseText(sourceText) ? "en" : "zh";
+
     QJsonObject json;
     json["source_language"] = "detect";
-    json["target_language"] = to_language;
+    json["target_language"] = targetLang;
     json["text_list"] = textList;
-
-    QJsonArray glossaryList;
-    json["glossary_list"] = glossaryList;
     json["enable_user_glossary"] = false;
     json["category"] = "";
 
     QMap<QString, QString> headers;
     headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
     headers["content-type"] = "application/json";
+    
     http.sendPostRequest("https://translate.volcengine.com/crx/translate/v2/", json, headers);
 }
 
-
-/***************************************************************************************************************
-    翻译完成
-***************************************************************************************************************/
 void Widget::finished(QByteArray data)
 {
-    QJsonObject json = QJsonDocument::fromJson(data).object();
-    QJsonArray jsonArray = json.value("translations").toArray();
-    QString result;
-    for(int i=0;i<jsonArray.size();i++){
-        result.append(jsonArray[i].toString());
+    if (data.isEmpty()) {
+        qWarning() << "Received empty response from server";
+        return;
     }
-    ui->txt_source->setTextColor(QColor(46, 47, 48));
+
+    QJsonParseError parseError;
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(data, &parseError);
+    if (parseError.error != QJsonParseError::NoError) {
+        qWarning() << "JSON parse error:" << parseError.errorString();
+        return;
+    }
+
+    QJsonObject json = jsonDoc.object();
+    QJsonArray jsonArray = json.value("translations").toArray();
+    if (jsonArray.isEmpty()) {
+        qWarning() << "No translations in response";
+        return;
+    }
+
+    QString result;
+    for(const QJsonValue &value : jsonArray) {
+        if (!value.isString()) continue;
+        result.append(value.toString());
+    }
+
     ui->txt_target->clear();
     ui->txt_target->append(result);
+    ui->txt_source->setTextColor(QColor(46, 47, 48));
 
-    //激活窗口
-    this->raise();
-    this->show();
-    this->activateWindow();
-
-#ifdef Q_OS_WIN32
-    HWND hForgroundWnd = GetForegroundWindow();
-    DWORD dwForeID = ::GetWindowThreadProcessId(hForgroundWnd, NULL);
-    DWORD dwCurID = ::GetCurrentThreadId();
-
-    ::AttachThreadInput(dwCurID, dwForeID, TRUE);
-    ::SetForegroundWindow((HWND)winId());
-#endif
-
+    showAndActivateWindow();
 }
 
-/***************************************************************************************************************
-    获取剪切板内容
-***************************************************************************************************************/
 QString Widget::getClipboardContent()
 {
-    if (clipboard == nullptr) {
-        clipboard = QApplication::clipboard();
+    if (!clipboard) {
+        qWarning() << "Clipboard is not available";
+        return QString();
     }
-    return clipboard->text();
+    return clipboard->text().trimmed();
 }
 
-/***************************************************************************************************************
-    翻译
-***************************************************************************************************************/
 void Widget::on_btn_translate_clicked()
 {
     QString data = ui->txt_source->toPlainText().trimmed();
