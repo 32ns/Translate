@@ -9,6 +9,7 @@
 #include <QSystemTrayIcon>
 #include <QMenu>
 #include "httpmanager.h"
+#include <QTimer>
 
 enum API_VERSION{
     V1,
@@ -48,12 +49,21 @@ private:
     void createTrayIcon();
     void createActions();
 
+    // 标题栏动画相关
+    void startTitleAnimation();
+    void stopTitleAnimation();
+    void updateTitleAnimation();
+
 private:
     Ui::Widget *ui;
     HttpManager http;
     QClipboard *clipboard{nullptr};
     API_VERSION apiVersion = API_VERSION::V2;
 
+    // 标题栏动画相关成员
+    QTimer* m_titleAnimTimer{nullptr};
+    int m_animDots{0};
+    QString m_originalTitle;
     
     // 将原来的全局变量转为成员变量
     DWORD m_lastCtrlCPressTime{0};

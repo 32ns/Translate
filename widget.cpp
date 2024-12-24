@@ -45,6 +45,14 @@ Widget::Widget(QWidget *parent)
     setWindowFlags(Qt::Window | Qt::Tool | Qt::WindowStaysOnTopHint);
     setAttribute(Qt::WA_DeleteOnClose);
 
+    // 保存原始标题
+    m_originalTitle = windowTitle();
+
+    // 初始化标题动画定时器
+    m_titleAnimTimer = new QTimer(this);
+    m_titleAnimTimer->setInterval(500);
+    connect(m_titleAnimTimer, &QTimer::timeout, this, &Widget::updateTitleAnimation);
+
     // 设置窗口图标
     QIcon icon(":/res/translate.svg");
     setWindowIcon(icon);
@@ -168,6 +176,10 @@ void Widget::keyDownHandle()
     ui->txt_source->clear();
     ui->txt_source->append(data);
     
+    // 先显示窗口
+    showAndActivateWindow();
+    
+    // 然后发送翻译请求
     Translation_v2(QJsonArray{data});
 }
 
@@ -218,6 +230,8 @@ void Widget::Translation_v1(QJsonArray textList)
         return;
     }
 
+    startTitleAnimation();
+
     // 获取源文本并按行分割
     QString sourceText = textList[0].toString();
     QStringList lines = sourceText.split('\n');
@@ -259,6 +273,8 @@ void Widget::Translation_v2(QJsonArray textList)
         return;
     }
 
+    startTitleAnimation();
+
     // 自动检测源文本语言并设置目标语言
     QString sourceText = textList[0].toString();
     QString targetLang = isChineseText(sourceText) ? "en" : "zh";
@@ -297,12 +313,12 @@ void Widget::Translation_v2(QJsonArray textList)
 
 void Widget::finished(QByteArray data)
 {
+    stopTitleAnimation();
+
     if (data.isEmpty()) {
         qWarning() << "Received empty response from server";
         return;
     }
-
-    qDebug()<<data;
 
     QJsonParseError parseError;
     QJsonDocument jsonDoc = QJsonDocument::fromJson(data, &parseError);
@@ -336,7 +352,6 @@ void Widget::finished(QByteArray data)
     }
     // 检查是否是 API V1 格式
     else if (json.contains("header")) {
-        // API V1 格式处理
         QJsonObject header = json["header"].toObject();
         if (header["ret_code"].toString() != "succ") {
             qWarning() << "Translation failed, error code:" << header["ret_code"].toString();
@@ -362,9 +377,6 @@ void Widget::finished(QByteArray data)
     ui->txt_target->clear();
     ui->txt_target->append(result);
     ui->txt_source->setTextColor(QColor(46, 47, 48));
-
-    // 在获得翻译结果后再显示和激活窗口
-    QTimer::singleShot(100, this, &Widget::showAndActivateWindow);
 }
 
 QString Widget::getClipboardContent()
@@ -413,5 +425,29 @@ void Widget::createTrayIcon()
             }
         }
     });
+}
+
+// 添加标题栏动画相关函数实现
+void Widget::startTitleAnimation()
+{
+    m_animDots = 0;
+    updateTitleAnimation();
+    m_titleAnimTimer->start();
+}
+
+void Widget::stopTitleAnimation()
+{
+    m_titleAnimTimer->stop();
+    setWindowTitle(m_originalTitle);
+}
+
+void Widget::updateTitleAnimation()
+{
+    QString dots;
+    m_animDots = (m_animDots + 1) % 4;
+    for(int i = 0; i < m_animDots; ++i) {
+        dots += ".";
+    }
+    setWindowTitle(m_originalTitle + (dots.isEmpty() ? "" : " " + dots));
 }
 
