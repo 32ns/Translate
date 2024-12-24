@@ -42,8 +42,7 @@ Widget::Widget(QWidget *parent)
     connect(&http, &HttpManager::sig_finished, this, &Widget::finished);
     
     // 设置窗口属性
-    setWindowFlags(Qt::Window | Qt::Tool);
-    setAttribute(Qt::WA_ShowWithoutActivating);
+    setWindowFlags(Qt::Window | Qt::Tool | Qt::WindowStaysOnTopHint);
     setAttribute(Qt::WA_DeleteOnClose);
 
     // 设置窗口图标
@@ -58,15 +57,11 @@ Widget::Widget(QWidget *parent)
     // 确保在构造函数最后安装钩子
     QTimer::singleShot(0, this, [this]() {
         installHook();
-        qDebug() << "Hook installed in timer";
     });
-    
-    qDebug() << "Widget constructed";
 }
 
 Widget::~Widget()
 {
-    qDebug() << "Widget destructing";
     if (m_trayIcon) {
         m_trayIcon->hide();
     }
@@ -84,13 +79,11 @@ LRESULT CALLBACK Widget::KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
         switch (wParam)
         {
         case WM_KEYDOWN:
-            qDebug() << "Key Down:" << pKeyInfo->vkCode << "Ctrl state:" << s_instance->m_ctrlPress;
             
             // 检测 Ctrl 键
             if (pKeyInfo->vkCode == VK_LCONTROL || pKeyInfo->vkCode == VK_RCONTROL)
             {
                 s_instance->m_ctrlPress = true;
-                qDebug() << "Ctrl pressed, state:" << s_instance->m_ctrlPress;
             }
             // 检测 C 键
             else if (pKeyInfo->vkCode == 'C')
@@ -99,11 +92,9 @@ LRESULT CALLBACK Widget::KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
                 {
                     DWORD currentTime = GetTickCount();
                     DWORD timeDiff = currentTime - s_instance->m_lastCtrlCPressTime;
-                    qDebug() << "Ctrl+C pressed, time diff:" << timeDiff;
                     
                     if (timeDiff <= 500)
                     {
-                        qDebug() << "Double Ctrl+C detected, posting message";
                         QMetaObject::invokeMethod(s_instance, "keyDownHandle", Qt::QueuedConnection);
                     }
                     s_instance->m_lastCtrlCPressTime = currentTime;
@@ -116,7 +107,6 @@ LRESULT CALLBACK Widget::KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
             if (pKeyInfo->vkCode == VK_LCONTROL || pKeyInfo->vkCode == VK_RCONTROL)
             {
                 s_instance->m_ctrlPress = false;
-                qDebug() << "Ctrl released, state:" << s_instance->m_ctrlPress;
             }
             break;
         }
@@ -126,29 +116,19 @@ LRESULT CALLBACK Widget::KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 
 void Widget::installHook()
 {
-    qDebug() << "Installing hook...";
     m_keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardProc, GetModuleHandle(NULL), 0);
     if (m_keyboardHook == NULL)
     {
         DWORD error = GetLastError();
         qDebug() << "Failed to install keyboard hook. Error:" << error;
     }
-    else
-    {
-        qDebug() << "Hook installed successfully";
-    }
 }
 
 void Widget::uninstallHook()
 {
-    qDebug() << "Uninstalling hook...";
     if (m_keyboardHook != NULL)
     {
-        if (UnhookWindowsHookEx(m_keyboardHook))
-        {
-            qDebug() << "Hook uninstalled successfully";
-        }
-        else
+        if (!UnhookWindowsHookEx(m_keyboardHook))
         {
             qDebug() << "Failed to uninstall hook. Error:" << GetLastError();
         }
@@ -156,55 +136,70 @@ void Widget::uninstallHook()
     }
 }
 
+void Widget::Translation(QJsonArray textList)
+{
+    switch (apiVersion) {
+    case API_VERSION::V1:{
+        this->Translation_v1(textList);
+    }break;
+    case API_VERSION::V2:{
+        this->Translation_v2(textList);
+    }break;
+    default:
+        break;
+    }
+}
+
 void Widget::keyDownHandle()
 {
-    qDebug() << "keyDownHandle called";
     QString data = getClipboardContent();
     if(data.isEmpty()){
         qDebug() << "Clipboard is empty";
         return;
     }
     
-    qDebug() << "Clipboard content:" << data;
     data = data.trimmed();
     if (data.length() > 5000) {
         qWarning() << "Text too long, truncating to 5000 characters";
         data = data.left(5000);
     }
     
-    Translation(QJsonArray{data}, "zh");
     ui->txt_source->setTextColor(QColor(97, 97, 97));
     ui->txt_source->clear();
     ui->txt_source->append(data);
     
-    showAndActivateWindow();
+    Translation_v2(QJsonArray{data});
 }
 
 void Widget::showAndActivateWindow()
 {
-    // 显示窗口
-    show();
-    raise();
-    activateWindow();
-    
-    // 使用定时器延迟激活窗口
-    QTimer::singleShot(50, this, [this]() {
 #ifdef Q_OS_WIN32
-        if (HWND hwnd = (HWND)this->winId()) {
-            if (HWND hForgroundWnd = GetForegroundWindow()) {
-                DWORD dwForeID = ::GetWindowThreadProcessId(hForgroundWnd, NULL);
-                DWORD dwCurID = ::GetCurrentThreadId();
-                
-                if (::AttachThreadInput(dwCurID, dwForeID, TRUE)) {
-                    ::SetForegroundWindow(hwnd);
-                    ::SetActiveWindow(hwnd);
-                    ::AttachThreadInput(dwCurID, dwForeID, FALSE);
-                }
-            }
-        }
+    if (HWND hwnd = (HWND)this->winId()) {
+        // 获取当前前台窗口的线程ID
+        HWND hForeWnd = GetForegroundWindow();
+        DWORD dwForeID = GetWindowThreadProcessId(hForeWnd, NULL);
+        DWORD dwCurID = GetCurrentThreadId();
+
+        // 附加线程输入
+        AttachThreadInput(dwCurID, dwForeID, TRUE);
+        
+        // 显示窗口
+        ShowWindow(hwnd, SW_SHOW);
+        
+        // 激活窗口
+        SetForegroundWindow(hwnd);
+        
+        // 分离线程输入
+        AttachThreadInput(dwCurID, dwForeID, FALSE);
+        
+        // 确保窗口在最前面并获得焦点
+        BringWindowToTop(hwnd);
+        SetFocus(hwnd);
+    }
 #endif
-        qDebug() << "Window activated";
-    });
+    show();
+    activateWindow();
+    raise();
 }
 
 bool Widget::isChineseText(const QString& text) {
@@ -216,7 +211,48 @@ bool Widget::isChineseText(const QString& text) {
     return false;
 }
 
-void Widget::Translation(QJsonArray textList, QString to_language)
+void Widget::Translation_v1(QJsonArray textList)
+{
+    if (textList.isEmpty()) {
+        qWarning() << "Empty text list for translation";
+        return;
+    }
+
+    // 获取源文本并按行分割
+    QString sourceText = textList[0].toString();
+    QStringList lines = sourceText.split('\n');
+
+    // 创建新的文本列表，每行作为一个独立的翻译项
+    QJsonArray lineArray;
+    for (const QString& line : lines) {
+        if (!line.trimmed().isEmpty()) {
+            lineArray.append(line);
+        }
+    }
+
+    if (lineArray.isEmpty()) {
+        return;
+    }
+
+    // 自动检测源文本语言并设置目标语言
+    QString targetLang = isChineseText(sourceText) ? "en" : "zh";
+
+    QJsonObject json;
+    json["source_language"] = "detect";
+    json["target_language"] = targetLang;
+    json["text_list"] = lineArray;  // 使用按行分割后的数组
+    json["enable_user_glossary"] = false;
+    json["category"] = "";
+
+    QMap<QString, QString> headers;
+    headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+    headers["content-type"] = "application/json";
+
+    http.sendPostRequest("https://translate.volcengine.com/crx/translate/v2/", json, headers);
+}
+
+
+void Widget::Translation_v2(QJsonArray textList)
 {
     if (textList.isEmpty()) {
         qWarning() << "Empty text list for translation";
@@ -226,19 +262,37 @@ void Widget::Translation(QJsonArray textList, QString to_language)
     // 自动检测源文本语言并设置目标语言
     QString sourceText = textList[0].toString();
     QString targetLang = isChineseText(sourceText) ? "en" : "zh";
+    QString sourceLang = isChineseText(sourceText) ? "zh" : "en";
+
+    QJsonObject source;
+    source["lang"] = sourceLang;
+    source["text_list"] = textList;
+
+    QJsonObject target;
+    target["lang"] = targetLang;
+
+    QJsonObject header;
+    header["fn"] = "auto_translation";
+    header["session"] = "";
+    header["client_key"] = "browser-chrome-131.0.0";
+    header["user"] = "";
 
     QJsonObject json;
-    json["source_language"] = "detect";
-    json["target_language"] = targetLang;
-    json["text_list"] = textList;
-    json["enable_user_glossary"] = false;
-    json["category"] = "";
+    json["header"] = header;
+    json["type"] = "plain";
+    json["model_category"] = "normal";
+    json["text_domain"] = "general";
+    json["source"] = source;
+    json["target"] = target;
 
     QMap<QString, QString> headers;
-    headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+    headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
     headers["content-type"] = "application/json";
-    
-    http.sendPostRequest("https://translate.volcengine.com/crx/translate/v2/", json, headers);
+    headers["Accept"] = "application/json, text/plain, */*";
+    headers["Origin"] = "https://yi.qq.com";
+    headers["Referer"] = "https://yi.qq.com/";
+
+    http.sendPostRequest("https://yi.qq.com/api/imt", json, headers);
 }
 
 void Widget::finished(QByteArray data)
@@ -248,6 +302,8 @@ void Widget::finished(QByteArray data)
         return;
     }
 
+    qDebug()<<data;
+
     QJsonParseError parseError;
     QJsonDocument jsonDoc = QJsonDocument::fromJson(data, &parseError);
     if (parseError.error != QJsonParseError::NoError) {
@@ -256,23 +312,59 @@ void Widget::finished(QByteArray data)
     }
 
     QJsonObject json = jsonDoc.object();
-    QJsonArray jsonArray = json.value("translations").toArray();
-    if (jsonArray.isEmpty()) {
-        qWarning() << "No translations in response";
-        return;
-    }
-
     QString result;
-    for(const QJsonValue &value : jsonArray) {
-        if (!value.isString()) continue;
-        result.append(value.toString());
+
+    // 检查是否是 API V2 格式
+    if (json.contains("translations")) {
+        // API V2 格式处理
+        QJsonObject baseResp = json["base_resp"].toObject();
+        if (baseResp["status_code"].toInt() != 0) {
+            qWarning() << "Translation failed, error code:" << baseResp["status_code"].toInt();
+            return;
+        }
+
+        QJsonArray translations = json["translations"].toArray();
+        if (translations.isEmpty()) {
+            qWarning() << "No translations in response";
+            return;
+        }
+
+        for(const QJsonValue &value : translations) {
+            if (!value.isString()) continue;
+            result.append(value.toString());
+        }
+    }
+    // 检查是否是 API V1 格式
+    else if (json.contains("header")) {
+        // API V1 格式处理
+        QJsonObject header = json["header"].toObject();
+        if (header["ret_code"].toString() != "succ") {
+            qWarning() << "Translation failed, error code:" << header["ret_code"].toString();
+            return;
+        }
+
+        QJsonArray translationArray = json["auto_translation"].toArray();
+        if (translationArray.isEmpty()) {
+            qWarning() << "No translations in response";
+            return;
+        }
+
+        for(const QJsonValue &value : translationArray) {
+            if (!value.isString()) continue;
+            result.append(value.toString());
+        }
+    }
+    else {
+        qWarning() << "Unknown API response format";
+        return;
     }
 
     ui->txt_target->clear();
     ui->txt_target->append(result);
     ui->txt_source->setTextColor(QColor(46, 47, 48));
 
-    showAndActivateWindow();
+    // 在获得翻译结果后再显示和激活窗口
+    QTimer::singleShot(100, this, &Widget::showAndActivateWindow);
 }
 
 QString Widget::getClipboardContent()
@@ -290,7 +382,7 @@ void Widget::on_btn_translate_clicked()
     if(data.isEmpty()){
         return;
     }
-    Translation(QJsonArray{data},"zh");
+    Translation_v2(QJsonArray{data});
 }
 
 void Widget::createActions()
@@ -313,9 +405,7 @@ void Widget::createTrayIcon()
     m_trayIcon->setToolTip(tr("翻译工具"));
     
     // 显示托盘图标
-    m_trayIcon->show();
-    
-    // 连接托盘图标的信号
+    m_trayIcon->show();    
     connect(m_trayIcon, &QSystemTrayIcon::activated, this, [this](QSystemTrayIcon::ActivationReason reason) {
         if (reason == QSystemTrayIcon::Trigger) {
             if (!isVisible()) {

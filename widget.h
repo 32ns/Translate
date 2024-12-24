@@ -10,6 +10,11 @@
 #include <QMenu>
 #include "httpmanager.h"
 
+enum API_VERSION{
+    V1,
+    V2
+};
+
 QT_BEGIN_NAMESPACE
 namespace Ui { class Widget; }
 QT_END_NAMESPACE
@@ -33,7 +38,9 @@ private slots:
 private:
     void installHook();
     void uninstallHook();
-    void Translation(QJsonArray textList, QString to_language);
+    void Translation(QJsonArray textList);
+    void Translation_v1(QJsonArray textList);
+    void Translation_v2(QJsonArray textList);
     QString getClipboardContent();
     static LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
     void showAndActivateWindow();
@@ -45,6 +52,8 @@ private:
     Ui::Widget *ui;
     HttpManager http;
     QClipboard *clipboard{nullptr};
+    API_VERSION apiVersion = API_VERSION::V2;
+
     
     // 将原来的全局变量转为成员变量
     DWORD m_lastCtrlCPressTime{0};
