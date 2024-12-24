@@ -1,0 +1,27 @@
+#include <windows.h>
+
+IDI_ICON1 ICON DISCARDABLE "res/translate.ico"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION 1,0,0,0
+PRODUCTVERSION 1,0,0,0
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904E4"
+        BEGIN
+            VALUE "CompanyName", "Your Company"
+            VALUE "FileDescription", "Translate Tool"
+            VALUE "FileVersion", "1.0.0.0"
+            VALUE "InternalName", "Translate"
+            VALUE "LegalCopyright", "Copyright (C) 2024"
+            VALUE "OriginalFilename", "Translate.exe"
+            VALUE "ProductName", "Translate"
+            VALUE "ProductVersion", "1.0.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1252
+    END
+END 

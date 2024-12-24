@@ -19,12 +19,14 @@ set(PROJECT_SOURCES
         widget.h
         widget.ui
         httpmanager.h httpmanager.cpp
+        app.rc
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(Translate
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
+        resources.qrc
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET Translate APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR

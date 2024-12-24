@@ -42,9 +42,18 @@ Widget::Widget(QWidget *parent)
     connect(&http, &HttpManager::sig_finished, this, &Widget::finished);
     
     // 设置窗口属性
-    setWindowFlags(Qt::Window | Qt::FramelessWindowHint | Qt::Tool);
+    setWindowFlags(Qt::Window | Qt::Tool);
     setAttribute(Qt::WA_ShowWithoutActivating);
     setAttribute(Qt::WA_DeleteOnClose);
+
+    // 设置窗口图标
+    QIcon icon(":/res/translate.svg");
+    setWindowIcon(icon);
+    QApplication::setWindowIcon(icon);
+    
+    // 创建托盘图标和菜单
+    createActions();
+    createTrayIcon();
     
     // 确保在构造函数最后安装钩子
     QTimer::singleShot(0, this, [this]() {
@@ -58,6 +67,9 @@ Widget::Widget(QWidget *parent)
 Widget::~Widget()
 {
     qDebug() << "Widget destructing";
+    if (m_trayIcon) {
+        m_trayIcon->hide();
+    }
     s_instance = nullptr;
     uninstallHook();
     delete ui;
@@ -279,5 +291,37 @@ void Widget::on_btn_translate_clicked()
         return;
     }
     Translation(QJsonArray{data},"zh");
+}
+
+void Widget::createActions()
+{
+    m_quitAction = new QAction(tr("退出"), this);
+    connect(m_quitAction, &QAction::triggered, qApp, &QApplication::quit);
+}
+
+void Widget::createTrayIcon()
+{
+    m_trayIconMenu = new QMenu(this);
+    m_trayIconMenu->addAction(m_quitAction);
+
+    m_trayIcon = new QSystemTrayIcon(this);
+    m_trayIcon->setContextMenu(m_trayIconMenu);
+    
+    // 使用相同的图标
+    QIcon icon(":/res/translate.svg");
+    m_trayIcon->setIcon(icon);
+    m_trayIcon->setToolTip(tr("翻译工具"));
+    
+    // 显示托盘图标
+    m_trayIcon->show();
+    
+    // 连接托盘图标的信号
+    connect(m_trayIcon, &QSystemTrayIcon::activated, this, [this](QSystemTrayIcon::ActivationReason reason) {
+        if (reason == QSystemTrayIcon::Trigger) {
+            if (!isVisible()) {
+                showAndActivateWindow();
+            }
+        }
+    });
 }
 

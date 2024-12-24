@@ -6,6 +6,8 @@
 #include <QJsonArray>
 #include <QEvent>
 #include <windows.h>
+#include <QSystemTrayIcon>
+#include <QMenu>
 #include "httpmanager.h"
 
 QT_BEGIN_NAMESPACE
@@ -36,6 +38,8 @@ private:
     static LRESULT CALLBACK KeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
     void showAndActivateWindow();
     bool isChineseText(const QString& text);
+    void createTrayIcon();
+    void createActions();
 
 private:
     Ui::Widget *ui;
@@ -49,6 +53,11 @@ private:
     
     // 用于存储当前窗口实例的静态指针
     static Widget* s_instance;
+
+    // 新增：托盘图标相关成员
+    QSystemTrayIcon *m_trayIcon{nullptr};
+    QMenu *m_trayIconMenu{nullptr};
+    QAction *m_quitAction{nullptr};
 };
 
 #endif // WIDGET_H
