@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
     QNetworkProxyFactory::setUseSystemConfiguration(false);
     QApplication a(argc, argv);
     Widget w;
-    w.setWindowFlags(Qt::WindowTitleHint|Qt::WindowStaysOnTopHint);    //隐藏标题栏（无边框）
+    w.setWindowFlags(Qt::Window | Qt::WindowStaysOnTopHint);    // 保持正常窗口样式，并保持在最上层
     w.hide();
     return a.exec();
 }

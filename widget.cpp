@@ -44,6 +44,41 @@ Widget::Widget(QWidget *parent)
     // 设置窗口属性
     setWindowFlags(Qt::Window | Qt::Tool | Qt::WindowStaysOnTopHint);
     setAttribute(Qt::WA_DeleteOnClose);
+    
+    // 设置窗口样式
+    setStyleSheet(R"(
+        QWidget {
+            background-color: #FFFFFF;
+            font-family: "Microsoft YaHei", "微软雅黑";
+        }
+        QTextEdit {
+            border: 1px solid #E0E0E0;
+            border-radius: 2px;
+            padding: 8px;
+            background-color: #FFFFFF;
+            selection-background-color: #2196F3;
+            selection-color: white;
+        }
+        QTextEdit:focus {
+            border: 1px solid #2196F3;
+        }
+        QPushButton {
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 2px;
+            padding: 8px 16px;
+            font-size: 14px;
+            min-height: 25px;
+            max-height: 25px;
+        }
+        QPushButton:hover {
+            background-color: #1E88E5;
+        }
+        QPushButton:pressed {
+            background-color: #1976D2;
+        }
+    )");
 
     // 保存原始标题
     m_originalTitle = windowTitle();
@@ -230,6 +265,9 @@ void Widget::Translation_v1(QJsonArray textList)
         return;
     }
 
+    // 清空翻译结果
+    ui->txt_target->clear();
+    
     startTitleAnimation();
 
     // 获取源文本并按行分割
@@ -273,6 +311,9 @@ void Widget::Translation_v2(QJsonArray textList)
         return;
     }
 
+    // 清空翻译结果
+    ui->txt_target->clear();
+    
     startTitleAnimation();
 
     // 自动检测源文本语言并设置目标语言
