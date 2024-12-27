@@ -1,8 +1,0 @@
-D:/QtFile/Translate/build/Desktop_Qt_6_7_1_MSVC2019_64bit-Release/CMakeFiles/Translate.dir
-D:/QtFile/Translate/build/Desktop_Qt_6_7_1_MSVC2019_64bit-Release/CMakeFiles/edit_cache.dir
-D:/QtFile/Translate/build/Desktop_Qt_6_7_1_MSVC2019_64bit-Release/CMakeFiles/rebuild_cache.dir
-D:/QtFile/Translate/build/Desktop_Qt_6_7_1_MSVC2019_64bit-Release/CMakeFiles/list_install_components.dir
-D:/QtFile/Translate/build/Desktop_Qt_6_7_1_MSVC2019_64bit-Release/CMakeFiles/install.dir
-D:/QtFile/Translate/build/Desktop_Qt_6_7_1_MSVC2019_64bit-Release/CMakeFiles/install/local.dir
-D:/QtFile/Translate/build/Desktop_Qt_6_7_1_MSVC2019_64bit-Release/CMakeFiles/Translate_autogen_timestamp_deps.dir
-D:/QtFile/Translate/build/Desktop_Qt_6_7_1_MSVC2019_64bit-Release/CMakeFiles/Translate_autogen.dir

@@ -30,6 +30,7 @@ public:
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
+    void closeEvent(QCloseEvent *event) override;
 
 private slots:
     void on_btn_translate_clicked();
@@ -58,7 +59,7 @@ private:
     Ui::Widget *ui;
     HttpManager http;
     QClipboard *clipboard{nullptr};
-    API_VERSION apiVersion = API_VERSION::V2;
+    API_VERSION apiVersion = API_VERSION::V1;
 
     // 标题栏动画相关成员
     QTimer* m_titleAnimTimer{nullptr};
