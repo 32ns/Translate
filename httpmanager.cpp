@@ -17,7 +17,7 @@ HttpManager::HttpManager(QObject *parent)
 
 HttpManager::~HttpManager()
 {
-    // QObject 会自动删除子对象，不需要手动删除 manager
+
 }
 
 void HttpManager::handleReply()

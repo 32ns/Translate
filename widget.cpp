@@ -62,6 +62,53 @@ Widget::Widget(QWidget *parent)
         QTextEdit:focus {
             border: 1px solid #2196F3;
         }
+        /* 滚动条整体样式 */
+        QScrollBar:vertical {
+            border: none;
+            background: #F5F5F5;
+            width: 8px;
+            margin: 0px;
+        }
+        /* 滚动条滑块 */
+        QScrollBar::handle:vertical {
+            background: #BDBDBD;
+            border-radius: 4px;
+            min-height: 30px;
+        }
+        QScrollBar::handle:vertical:hover {
+            background: #9E9E9E;
+        }
+        /* 滚动条上下按钮 */
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+            height: 0px;
+            background: none;
+        }
+        /* 滚动条背景 */
+        QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+            background: none;
+        }
+        /* 水平滚动条 */
+        QScrollBar:horizontal {
+            border: none;
+            background: #F5F5F5;
+            height: 8px;
+            margin: 0px;
+        }
+        QScrollBar::handle:horizontal {
+            background: #BDBDBD;
+            border-radius: 4px;
+            min-width: 30px;
+        }
+        QScrollBar::handle:horizontal:hover {
+            background: #9E9E9E;
+        }
+        QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+            width: 0px;
+            background: none;
+        }
+        QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
+            background: none;
+        }
         QPushButton {
             background-color: #2196F3;
             color: white;
@@ -290,14 +337,21 @@ void Widget::Translation_v1(QJsonArray textList)
     
     startTitleAnimation();
 
-    // 获取源文本
+    // 获取源文本并按行分割
     QString sourceText = textList[0].toString();
+    QStringList lines = sourceText.split('\n');
+
+    // 创建新的文本列表，保留空行
+    QJsonArray lineArray;
+    for (const QString& line : lines) {
+        lineArray.append(line);  // 不过滤空行，保持原格式
+    }
 
     // 创建请求体
     QJsonObject json;
     json["source_language"] = "detect";
     json["target_language"] = isChineseText(sourceText) ? "en" : "zh";
-    json["text_list"] = textList;
+    json["text_list"] = lineArray;  // 使用按行分割后的数组
     json["glossary_list"] = QJsonArray();
     json["enable_user_glossary"] = false;
     json["category"] = "";
